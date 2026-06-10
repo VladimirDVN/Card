@@ -15,7 +15,7 @@ import {
 const MODELS_DIR = "models/";
 const TEXT_URL = "text.txt";
 const MANIFEST_URL = `${MODELS_DIR}manifest.json`;
-const BOUQUET_TITLE = "Тюльпаны и орхидеи";
+const BOUQUET_TITLE = "Розы"; //Тюльпаны и орхидеи
 
 const textEl = document.getElementById("card-text");
 const viewportEl = document.getElementById("card-scene");
