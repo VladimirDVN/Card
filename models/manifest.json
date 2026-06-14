@@ -3,7 +3,7 @@
     "title": "Букет",
     "bouquet": {
       "items": [
-        { "file": "tulip.glb", "count": 7 }
+        { "file": "rose.glb", "count": 1 }
       ],
       "tilt": 0.14
     }
