@@ -1,27 +1,9 @@
 [
   {
-    "title": "Тюльпан",
-    "file": "tulip.glb"
-  },
-  {
-    "title": "Орхидея",
-    "file": "orchid.glb"
-  },
-  {
-    "title": "Букет тюльпанов",
-    "bouquet": {
-      "file": "tulip.glb",
-      "count": 10,
-      "radiusScale": 1.05,
-      "tilt": 0.14
-    }
-  },
-  {
-    "title": "Тюльпаны и орхидеи",
+    "title": "Букет",
     "bouquet": {
       "items": [
-        { "file": "tulip.glb", "count": 7 },
-        { "file": "orchid.glb", "count": 4 }
+        { "file": "rose.glb", "count": 1 }
       ],
       "tilt": 0.14
     }
