@@ -1,9 +1,9 @@
 [
   {
-    "title": "Букет",
+    "title": "Розы",
     "bouquet": {
       "items": [
-        { "file": "rose.glb", "count": 10 }
+        { "file": "rose_high-poly.glb", "count": 10 }
       ],
       "tilt": 0.14
     }
