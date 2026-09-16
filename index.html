@@ -9,8 +9,15 @@
   <link
     href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,400;0,600;1,400&family=Source+Sans+3:wght@400;500&display=swap"
     rel="stylesheet"
-  />
-  <link rel="stylesheet" href="css/card.css" />
+  />
+<script  type="importmap"> {
+		"imports": {
+			"three": "https://threejs.org/build/three.module.js",
+			"three/addons/": "https://threejs.org/examples/jsm/"
+			}
+		} </script>
+  <script type="module" crossorigin src="/main-out.js"></script>
+  <link rel="stylesheet" crossorigin href="/main-out.css">
 </head>
 <body>
   <header class="topbar">
@@ -23,17 +30,27 @@
       <button type="button" id="card-save-pdf" class="topbar__btn topbar__btn--ghost" title="Откроется диалог печати — выберите «Сохранить как PDF»">
         PDF
       </button>
+	  <button type="button" id="save-bouquet" class="topbar__btn topbar__btn--ghost"> 
+		Сохранить описание букета  </button>
       <button
         type="button"
         id="card-save-glb"
         class="topbar__btn topbar__btn--ghost"
-        title="Сохранить 3d-otkrytka.glb — открыть в view-glb.html для просмотра"
+        title="Сохранить 3D-букет как 3d-otkrytka.glb (текст — часть модели; в обычных просмотрщиках он вращается вместе с букетом)"
       >
         GLB (3D + текст)
       </button>
+      <button
+        type="button"
+        id="card-save-html"
+        class="topbar__btn topbar__btn--ghost"
+        title="Сохранить открытку одним файлом HTML — можно просто отправить"
+      >
+        Открытка (1 файл)
+      </button>
     </div>
   </header>
-
+  <div id="history"></div>
   <main class="postcard-wrap">
     <article class="postcard" aria-label="Открытка с букетом и текстом">
       <div class="postcard__ornament" aria-hidden="true"></div>
@@ -55,14 +72,7 @@
     </article>
   </main>
 
-  <script type="importmap">
-  {
-    "imports": {
-      "three": "https://cdn.jsdelivr.net/npm/three@0.176.0/build/three.module.js",
-      "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.176.0/examples/jsm/"
-    }
-  }
-  </script>
-  <script type="module" src="js/card.js?v=9"></script>
+		<div id="title"></div>
+  <ul id="flowers"></ul>
 </body>
 </html>
