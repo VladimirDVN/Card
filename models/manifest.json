@@ -1,12 +1,1 @@
-[
-  {
-    "title": "Розы",
-    "bouquet": {
-      "items": [
-        { "file": "rose_high-poly.glb", "count": 10 }
-      ],
-      "tilt": 0.14
-    }
-  }
-]
-
+[{"title":"Bouquet0","testRead":[["Роза","Роза.glb",11,1],["r0","r1",0.43,1],["tilt","h1",0.14]]}]
