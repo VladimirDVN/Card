@@ -65117,6 +65117,57 @@ body {
     shape-outside: none;
   }
 }
+
+@media print {
+  @page {
+    size: A4 landscape;
+    margin: 8mm;
+  }
+
+  html,
+  body {
+    background: #fff;
+  }
+
+  .postcard__hint,
+  .postcard__ornament {
+    display: none !important;
+  }
+
+  .postcard-wrap {
+    margin: 0;
+    padding: 0;
+    max-width: none;
+  }
+
+  .postcard {
+    box-shadow: none;
+    border: 1px solid #ddd;
+    break-inside: avoid;
+    page-break-inside: avoid;
+    padding: 10mm 8mm;
+  }
+
+  .postcard__bouquet {
+    float: left;
+    width: 46%;
+    max-width: none;
+    height: 132mm;
+    margin: 0 8mm 4mm 0;
+    shape-outside: none;
+    break-inside: avoid;
+    page-break-inside: avoid;
+  }
+
+  .postcard__viewport {
+    min-height: 0;
+  }
+
+  .postcard__copy p {
+    orphans: 3;
+    widows: 3;
+  }
+}
 </style>
 </head>
 <body>
@@ -65184,8 +65235,19 @@ function resize() {
   var h = Math.max(viewport.clientHeight, 1);
   camera.aspect = w / h;
   camera.updateProjectionMatrix();
-  renderer.setSize(w, h);
+  // updateStyle = false — не фиксируем канва в пикселях экрана,
+  // иначе при печати (вёрстка пересчитывается под ширину бумаги)
+  // холст вылезет из рамки и обрежется по overflow:hidden.
+  renderer.setSize(w, h, false);
 }
+
+function renderForPrint() {
+  resize();
+  controls.update();
+  renderer.render(scene, camera);
+}
+window.addEventListener("beforeprint", renderForPrint);
+window.addEventListener("afterprint", renderForPrint);
 
 loader.parse(
   bytes.buffer,
@@ -65304,7 +65366,13 @@ let testRead = [];
     const h = Math.max(viewportEl.clientHeight, 1);
     camera.aspect = w / h;
     camera.updateProjectionMatrix();
-    renderer.setSize(w, h);
+    // updateStyle = false: не пишем inline width/height в canvas.
+    // Размер рисуется только буфером (canvas.width/height), а экранный
+    // размер задаёт CSS (.postcard__viewport canvas { width:100% }).
+    // Иначе канва зафиксирован в пикселях экрана, а при печати вёрстка
+    // пересчитывается под ширину бумаги — холст вылезает из рамки
+    // и обрезается по overflow:hidden, в PDF попадает только левая часть.
+    renderer.setSize(w, h, false);
     keepBouquetInFrame();
   }
 
@@ -65403,6 +65471,19 @@ async function initBouquetScene() {
 		renderer.render(scene, camera);
 	}
 	animate();
+
+	// При открытии диалога печати requestAnimationFrame обычно ставится
+	// на паузу, а ResizeObserver для печатной вёрстки срабатывает не всегда.
+	// Поэтому сами подгоняем буфер под печатный бокс и рендерим кадр:
+	// в PDF попадёт ровно то, что видно, а не пустота или обрезок.
+	function renderForPrint() {
+		resizeRenderer();
+		controls.update();
+		renderer.render(scene, camera);
+	}
+	window.addEventListener("beforeprint", renderForPrint);
+	window.addEventListener("afterprint", renderForPrint);
+
 	window.addEventListener(
 		"pagehide",
 		() => {
