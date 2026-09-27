@@ -65303,7 +65303,6 @@ const BOUQUET_TITLE = "Букет";
 const textEl = document.getElementById("card-text");
 const viewportEl = document.getElementById("card-scene");
 const statusEl = document.getElementById("card-scene-status");
-const savePngBtn = document.getElementById("card-save-png");
 const savePdfBtn = document.getElementById("card-save-pdf");
 const saveHtmlBtn = document.getElementById("card-save-html");
 const saveBqtBtn = document.getElementById("save-bouquet");
@@ -65452,12 +65451,10 @@ async function initBouquetScene() {
 		controls.update();
 
 		setSceneStatus("", "hidden");
-		if (savePngBtn) savePngBtn.disabled = false;
 		if (saveHtmlBtn) saveHtmlBtn.disabled = false;
 		if (saveBqtBtn) saveBqtBtn.disabled = false;
 		viewRef.bouquet = combinedBouquet;
 	} else {
-		if (savePngBtn) savePngBtn.disabled = true;
 		if (saveHtmlBtn) saveHtmlBtn.disabled = true;
 		if (saveBqtBtn) saveBqtBtn.disabled = true;
 	}
@@ -65499,10 +65496,6 @@ async function initBouquetScene() {
 }
 
 function bindSaveButtons() {
-  if (savePngBtn) {
-    savePngBtn.disabled = true;
-    savePngBtn.addEventListener("click", () => savePostcardAsPng());
-  }
   if (savePdfBtn) {
     savePdfBtn.addEventListener("click", () => savePostcardAsPdf());
   }
@@ -65938,124 +65931,6 @@ function waitForLayout(el) {
     };
     requestAnimationFrame(check);
   });
-}
-
-/**
- * Обводит контур прямоугольника со скруглёнными углами.
- * @param {CanvasRenderingContext2D} ctx
- * @param {number} x
- * @param {number} y
- * @param {number} w
- * @param {number} h
- * @param {number} r
- */
-function traceRoundedRect(ctx, x, y, w, h, r) {
-  const radius = Math.max(0, Math.min(r, w / 2, h / 2));
-  ctx.moveTo(x + radius, y);
-  ctx.arcTo(x + w, y, x + w, y + h, radius);
-  ctx.arcTo(x + w, y + h, x, y + h, radius);
-  ctx.arcTo(x, y + h, x, y, radius);
-  ctx.arcTo(x, y, x + w, y, radius);
-  ctx.closePath();
-}
-
-async function savePostcardAsPng() {
-  const postcard = document.querySelector(".postcard");
-  if (!postcard) return;
-  if (!viewRef) {
-    alert("Подождите, пока загрузится букет.");
-    return;
-  }
-
-  if (savePngBtn) savePngBtn.disabled = true;
-
-  try {
-    const scale = 2;
-
-    // 1) фиксируем текущий кадр 3D-сцены в отдельный canvas
-    const view = viewRef.renderer.domElement;
-    viewRef.controls.update();
-    viewRef.renderer.render(viewRef.scene, viewRef.camera);
-    const shot = document.createElement("canvas");
-    shot.width = view.width;
-    shot.height = view.height;
-    shot.getContext("2d").drawImage(view, 0, 0);
-
-    // 2) вёрстку открытки (фон, рамка, текст) рисует html2canvas
-    const { default: html2canvas } = await import(
-      'https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/+esm'
-    );
-
-    /** @type {{ x: number, y: number, w: number, h: number, fx: number, fy: number, fw: number, fh: number, r: number } | null} */
-    let frame = null;
-
-    const canvas = await html2canvas(postcard, {
-      scale,
-      useCORS: true,
-      logging: false,
-      onclone(clonedDoc) {
-        const hint = clonedDoc.querySelector(".postcard__hint");
-        const status = clonedDoc.getElementById("card-scene-status");
-        if (hint) hint.style.visibility = "hidden";
-        if (status) status.style.visibility = "hidden";
-
-        const clonedViewport = clonedDoc.getElementById("card-scene");
-        if (!clonedViewport) return;
-        // 3D-канву html2canvas копировать не умеет, а картинку растягивает
-        // по своему боксу (object-fit не поддерживается) — сцену
-        // вклеиваем в готовый PNG сами, по координатам клона.
-        clonedViewport.innerHTML = "";
-
-        const card = clonedDoc.querySelector(".postcard");
-        if (!card) return;
-        const cardRect = card.getBoundingClientRect();
-        const vpRect = clonedViewport.getBoundingClientRect();
-        const figure = clonedViewport.closest(".postcard__bouquet");
-        const figRect = figure ? figure.getBoundingClientRect() : vpRect;
-        const radius = figure
-          ? parseFloat(getComputedStyle(figure).borderTopLeftRadius) || 0
-          : 0;
-        frame = {
-          x: (vpRect.left - cardRect.left) * scale,
-          y: (vpRect.top - cardRect.top) * scale,
-          w: vpRect.width * scale,
-          h: vpRect.height * scale,
-          fx: (figRect.left - cardRect.left) * scale,
-          fy: (figRect.top - cardRect.top) * scale,
-          fw: figRect.width * scale,
-          fh: figRect.height * scale,
-          r: radius * scale,
-        };
-      },
-    });
-
-    // 3) накладываем снимок букета на готовый кадр открытки
-    if (frame) {
-      const ctx = canvas.getContext("2d");
-      ctx.save();
-      // html2canvas возвращает canvas с уже применённым трансформом (scale и сдвиг),
-      // поэтому переключаем контекст на реальные пиксели холста
-      ctx.setTransform(1, 0, 0, 1, 0, 0);
-      ctx.beginPath();
-      traceRoundedRect(ctx, frame.fx, frame.fy, frame.fw, frame.fh, frame.r);
-      ctx.clip();
-      ctx.drawImage(shot, frame.x, frame.y, frame.w, frame.h);
-      ctx.restore();
-    }
-
-    const link = document.createElement("a");
-    const date = new Date().toISOString().slice(0, 10);
-    link.download = `3d-otkrytka-${date}.png`;
-    link.href = canvas.toDataURL("image/png", 0.92);
-    link.click();
-  } catch (err) {
-    console.error(err);
-    alert(
-      "Не удалось сохранить PNG. Попробуйте кнопку PDF: в диалоге печати выберите «Сохранить как PDF»."
-    );
-  } finally {
-    if (savePngBtn) savePngBtn.disabled = false;
-  }
 }
 
 function savePostcardAsPdf() {
