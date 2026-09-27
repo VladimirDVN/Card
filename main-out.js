@@ -24891,48 +24891,6 @@ class CubeTexture extends Texture {
 }
 
 /**
- * Creates a texture from a canvas element.
- *
- * This is almost the same as the base texture class, except that it sets {@link Texture#needsUpdate}
- * to `true` immediately since a canvas can directly be used for rendering.
- *
- * @augments Texture
- */
-class CanvasTexture extends Texture {
-
-	/**
-	 * Constructs a new texture.
-	 *
-	 * @param {HTMLCanvasElement} [canvas] - The HTML canvas element.
-	 * @param {number} [mapping=Texture.DEFAULT_MAPPING] - The texture mapping.
-	 * @param {number} [wrapS=ClampToEdgeWrapping] - The wrapS value.
-	 * @param {number} [wrapT=ClampToEdgeWrapping] - The wrapT value.
-	 * @param {number} [magFilter=LinearFilter] - The mag filter value.
-	 * @param {number} [minFilter=LinearMipmapLinearFilter] - The min filter value.
-	 * @param {number} [format=RGBAFormat] - The texture format.
-	 * @param {number} [type=UnsignedByteType] - The texture type.
-	 * @param {number} [anisotropy=Texture.DEFAULT_ANISOTROPY] - The anisotropy value.
-	 */
-	constructor( canvas, mapping, wrapS, wrapT, magFilter, minFilter, format, type, anisotropy ) {
-
-		super( canvas, mapping, wrapS, wrapT, magFilter, minFilter, format, type, anisotropy );
-
-		/**
-		 * This flag can be used for type testing.
-		 *
-		 * @type {boolean}
-		 * @readonly
-		 * @default true
-		 */
-		this.isCanvasTexture = true;
-
-		this.needsUpdate = true;
-
-	}
-
-}
-
-/**
  * This class can be used to automatically save the depth information of a
  * rendering into a texture.
  *
@@ -64994,261 +64952,6 @@ GLTFExporter.Utils = {
 
 };
 
-const FONT_BODY = '400 30px "Cormorant Garamond", Georgia, "Times New Roman", serif';
-const FONT_CAP = '600 76px "Cormorant Garamond", Georgia, serif';
-
-/**
- * @param {CanvasRenderingContext2D} ctx
- * @param {string} font
- * @param {string} text
- * @param {number} maxWidth
- * @returns {string[]}
- */
-function wrapLines(ctx, font, text, maxWidth) {
-  if (maxWidth < 40) return [];
-  ctx.font = font;
-  const words = text.split(/\s+/).filter(Boolean);
-  const lines = [];
-  let current = "";
-
-  for (const word of words) {
-    const test = current ? `${current} ${word}` : word;
-    if (ctx.measureText(test).width > maxWidth && current) {
-      lines.push(current);
-      current = word;
-    } else {
-      current = test;
-    }
-  }
-  if (current) lines.push(current);
-  return lines;
-}
-
-/**
- * @param {string[]} paragraphs
- */
-async function createTextTexture(paragraphs) {
-  if (paragraphs.length === 0) {
-    throw new Error("Нет текста для текстуры");
-  }
-
-  await document.fonts.load(FONT_BODY);
-  await document.fonts.load(FONT_CAP);
-
-  const width = 1200;
-  const padding = 52;
-  const lineHeight = 44;
-  const paragraphGap = 22;
-  const columnGap = 28;
-
-  const bouquetZone = {
-    x: padding,
-    y: padding,
-    w: Math.floor(width * 0.44),
-    h: 500,
-  };
-
-  const sideColumnX = bouquetZone.x + bouquetZone.w + columnGap;
-  const sideColumnWidth = width - padding - sideColumnX;
-  const fullWidth = width - padding * 2;
-
-  const measure = document.createElement("canvas").getContext("2d");
-  if (!measure) throw new Error("Canvas 2D недоступен");
-
-  /** @type {{ text: string, gap?: boolean }[]} */
-  const flow = [];
-
-  for (let p = 0; p < paragraphs.length; p++) {
-    const lines = wrapLines(measure, FONT_BODY, paragraphs[p], sideColumnWidth);
-    for (const text of lines) flow.push({ text });
-    if (p < paragraphs.length - 1) flow.push({ text: "", gap: true });
-  }
-
-  const zoneBottomY = bouquetZone.y + bouquetZone.h;
-  let y = padding + 30;
-  let dropCapDone = false;
-
-  const height = Math.max(
-    720,
-    zoneBottomY +
-      Math.max(0, flow.length - 8) * lineHeight +
-      paragraphs.length * paragraphGap +
-      padding * 2
-  );
-
-  const canvas = document.createElement("canvas");
-  canvas.width = width;
-  canvas.height = height;
-  const ctx = canvas.getContext("2d");
-  if (!ctx) throw new Error("Canvas 2D недоступен");
-
-  const bg = ctx.createLinearGradient(0, 0, width, height);
-  bg.addColorStop(0, "#fffef9");
-  bg.addColorStop(0.42, "#faf3eb");
-  bg.addColorStop(1, "#f5ebe3");
-  ctx.fillStyle = bg;
-  ctx.fillRect(0, 0, width, height);
-
-  ctx.strokeStyle = "rgba(180, 120, 140, 0.28)";
-  ctx.lineWidth = 2;
-  ctx.strokeRect(10, 10, width - 20, height - 20);
-
-  const zoneGrad = ctx.createLinearGradient(
-    bouquetZone.x,
-    bouquetZone.y,
-    bouquetZone.x + bouquetZone.w,
-    bouquetZone.y + bouquetZone.h
-  );
-  zoneGrad.addColorStop(0, "#f8f0f4");
-  zoneGrad.addColorStop(1, "#ebe0e8");
-  ctx.fillStyle = zoneGrad;
-  ctx.fillRect(bouquetZone.x, bouquetZone.y, bouquetZone.w, bouquetZone.h);
-  ctx.strokeStyle = "rgba(180, 120, 140, 0.2)";
-  ctx.strokeRect(bouquetZone.x, bouquetZone.y, bouquetZone.w, bouquetZone.h);
-
-  for (const item of flow) {
-    if (item.gap) {
-      y += paragraphGap;
-      continue;
-    }
-
-    const inSideColumn = y < zoneBottomY;
-    const xStart = inSideColumn ? sideColumnX : padding;
-    const maxW = inSideColumn ? sideColumnWidth : fullWidth;
-
-    if (!dropCapDone && item.text.length > 0) {
-      dropCapDone = true;
-      const letter = item.text[0];
-      const rest = item.text.slice(1).trimStart();
-
-      ctx.font = FONT_CAP;
-      ctx.fillStyle = "#8b4a62";
-      ctx.textBaseline = "alphabetic";
-      ctx.fillText(letter, xStart, y + 14);
-
-      const capW = ctx.measureText(letter).width + 12;
-      ctx.font = FONT_BODY;
-      ctx.fillStyle = "#2c2419";
-
-      if (rest) {
-        const restLines = wrapLines(ctx, FONT_BODY, rest, maxW - capW);
-        for (let i = 0; i < restLines.length; i++) {
-          ctx.fillText(restLines[i], i === 0 ? xStart + capW : xStart, y);
-          y += lineHeight;
-        }
-      } else {
-        y += lineHeight;
-      }
-      continue;
-    }
-
-    ctx.font = FONT_BODY;
-    ctx.fillStyle = "#2c2419";
-    ctx.textBaseline = "alphabetic";
-    ctx.fillText(item.text, xStart, y);
-    y += lineHeight;
-  }
-
-  const texture = new CanvasTexture(canvas);
-  texture.colorSpace = SRGBColorSpace;
-  texture.minFilter = LinearFilter;
-  texture.magFilter = LinearFilter;
-  texture.needsUpdate = true;
-
-  return { texture, bouquetZone, width, height };
-}
-
-/**
- * Текст «приклеен» к камере (как HTML на сайте), букет — в мире сцены.
- * @param {THREE.Object3D} bouquet
- * @param {string[]} paragraphs
- */
-async function buildPostcardGlbRoot(bouquet, paragraphs) {
-  const scene = new Scene();
-  scene.name = "PostcardScene";
-
-  const { texture, bouquetZone, width: texW, height: texH } =
-    await createTextTexture(paragraphs);
-
-  const panelHeight = 2.75;
-  const panelWidth = panelHeight * (texW / texH);
-  const aspect = texW / texH;
-
-  const camera = new PerspectiveCamera(42, aspect, 0.05, 80);
-  camera.name = "PostcardCamera";
-  camera.position.set(0, 0, 5.8);
-  camera.lookAt(0, 0, 0);
-
-  const textPanel = new Mesh(
-    new PlaneGeometry(panelWidth, panelHeight),
-    new MeshStandardMaterial({
-      map: texture,
-      roughness: 0.92,
-      metalness: 0,
-      side: DoubleSide,
-    })
-  );
-  textPanel.name = "TextSheet_ScreenFixed";
-  textPanel.position.set(0, 0, -5.2);
-  camera.add(textPanel);
-  scene.add(camera);
-
-  const u0 = bouquetZone.x / texW;
-  const u1 = (bouquetZone.x + bouquetZone.w) / texW;
-  const v0 = bouquetZone.y / texH;
-  const v1 = (bouquetZone.y + bouquetZone.h) / texH;
-
-  const zoneW = (u1 - u0) * panelWidth;
-  const zoneH = (v1 - v0) * panelHeight;
-  const zoneLocalX = -panelWidth / 2 + ((u0 + u1) / 2) * panelWidth;
-  const zoneLocalY = panelHeight / 2 - ((v0 + v1) / 2) * panelHeight;
-
-  const bouquetPart = bouquet.clone(true);
-  bouquetPart.name = "BouquetMesh";
-  bouquetPart.updateMatrixWorld(true);
-  const bBox = new Box3().setFromObject(bouquetPart);
-  const bSize = bBox.getSize(new Vector3());
-  const bCenter = bBox.getCenter(new Vector3());
-  bouquetPart.position.sub(bCenter);
-
-  const fitScale =
-    Math.min(zoneW / Math.max(bSize.x, 0.001), zoneH / Math.max(bSize.y, 0.001)) *
-    0.92;
-  bouquetPart.scale.multiplyScalar(fitScale);
-
-  const pivot = new Group();
-  pivot.name = "BouquetPivot";
-
-  scene.updateMatrixWorld(true);
-  const pivotWorld = new Vector3(zoneLocalX, zoneLocalY, 0.06);
-  textPanel.localToWorld(pivotWorld);
-  pivot.position.copy(pivotWorld);
-  pivot.add(bouquetPart);
-  scene.add(pivot);
-
-  scene.userData.orbitTarget = pivot.position.clone();
-
-  return { root: scene, texture, pivot, camera };
-}
-
-/**
- * @param {THREE.Object3D} root
- * @param {THREE.Texture} [texture]
- */
-function disposePostcardGlbRoot(root, texture) {
-  texture?.dispose();
-  root.traverse((child) => {
-    if (!child.isMesh) return;
-    child.geometry?.dispose();
-    const mats = Array.isArray(child.material) ? child.material : [child.material];
-    for (const m of mats) {
-      if (!m) continue;
-      if (m.map && m.map !== texture) m.map.dispose();
-      m.dispose();
-    }
-  });
-}
-
 /**
  * Генерирует полностью автономный HTML-файл открытки:
  * весь 3D-букет встраивается как base64-GLB, текст — обычный HTML (неподвижный),
@@ -65540,7 +65243,6 @@ const viewportEl = document.getElementById("card-scene");
 const statusEl = document.getElementById("card-scene-status");
 const savePngBtn = document.getElementById("card-save-png");
 const savePdfBtn = document.getElementById("card-save-pdf");
-const saveGlbBtn = document.getElementById("card-save-glb");
 const saveHtmlBtn = document.getElementById("card-save-html");
 const saveBqtBtn = document.getElementById("save-bouquet");
 let radiusMultiplier;
@@ -65603,6 +65305,7 @@ let testRead = [];
     camera.aspect = w / h;
     camera.updateProjectionMatrix();
     renderer.setSize(w, h);
+    keepBouquetInFrame();
   }
 
 function normalizeManifest(data) {
@@ -65682,13 +65385,11 @@ async function initBouquetScene() {
 
 		setSceneStatus("", "hidden");
 		if (savePngBtn) savePngBtn.disabled = false;
-		if (saveGlbBtn) saveGlbBtn.disabled = false;
 		if (saveHtmlBtn) saveHtmlBtn.disabled = false;
 		if (saveBqtBtn) saveBqtBtn.disabled = false;
 		viewRef.bouquet = combinedBouquet;
 	} else {
 		if (savePngBtn) savePngBtn.disabled = true;
-		if (saveGlbBtn) saveGlbBtn.disabled = true;
 		if (saveHtmlBtn) saveHtmlBtn.disabled = true;
 		if (saveBqtBtn) saveBqtBtn.disabled = true;
 	}
@@ -65723,10 +65424,6 @@ function bindSaveButtons() {
   }
   if (savePdfBtn) {
     savePdfBtn.addEventListener("click", () => savePostcardAsPdf());
-  }
-  if (saveGlbBtn) {
-    saveGlbBtn.disabled = true;
-    saveGlbBtn.addEventListener("click", () => saveBouquetAsGlb());
   }
   if (saveHtmlBtn) {
     saveHtmlBtn.disabled = true;
@@ -66082,6 +65779,49 @@ function countMeshes(root) {
 
 
 /**
+ * Дистанция, при которой объект целиком помещается в кадр.
+ * Учитывает соотношение сторон вьюпорта: в узком (высоком) окне
+ * по вертикали влезает больше, чем по горизонтали.
+ * @param {THREE.PerspectiveCamera} camera
+ * @param {THREE.Vector3} size
+ * @param {number} [offset]
+ * @returns {number}
+ */
+function computeFitDistance(camera, size, offset = 1.22) {
+  const vFov = (camera.fov * Math.PI) / 180;
+  const aspect = camera.aspect > 0 ? camera.aspect : 1;
+  const hFov = 2 * Math.atan(Math.tan(vFov / 2) * aspect);
+  const halfHeight = size.y / 2;
+  // букет вращается, поэтому по горизонтали берём наибольший из размеров X/Z
+  const halfWidth = Math.max(size.x, size.z) / 2;
+  const distV = halfHeight / Math.tan(vFov / 2);
+  const distH = halfWidth / Math.tan(hFov / 2);
+  return Math.max(distV, distH, 0.001) * offset;
+}
+
+/**
+ * Если после смены размера окна букет перестал помещаться в кадр —
+ * отдаляет камеру (ближе не приближает, чтобы не мешать зуму).
+ */
+function keepBouquetInFrame() {
+  const target = viewRef && viewRef.bouquet;
+  if (!target || !viewRef.controls) return;
+  target.updateMatrixWorld(true);
+  const box = new Box3().setFromObject(target);
+  if (box.isEmpty()) return;
+  const required = computeFitDistance(camera, box.getSize(new Vector3()));
+  const orbitTarget = viewRef.controls.target;
+  const current = camera.position.distanceTo(orbitTarget);
+  if (!(current < required)) return;
+  const dir = camera.position.clone().sub(orbitTarget);
+  if (dir.lengthSq() < 1e-12) return;
+  camera.position.copy(orbitTarget).add(dir.normalize().multiplyScalar(required));
+  camera.near = Math.max(required / 500, 0.01);
+  camera.far = Math.max(required * 50, 50);
+  camera.updateProjectionMatrix();
+}
+
+/**
  * @param {THREE.PerspectiveCamera} camera
  * @param {THREE.Object3D} object
  * @param {number} [offset]
@@ -66094,9 +65834,7 @@ function fitCameraToObject(camera, object, offset = 1.22) {
 
   const size = box.getSize(new Vector3());
   const center = box.getCenter(new Vector3());
-  const maxDim = Math.max(size.x, size.y, size.z, 0.001);
-  const fov = (camera.fov * Math.PI) / 180;
-  const distance = (maxDim / 2 / Math.tan(fov / 2)) * offset;
+  const distance = computeFitDistance(camera, size, offset);
 
   camera.position.set(center.x, center.y + size.y * 0.08, center.z + distance);
   camera.near = Math.max(distance / 500, 0.01);
@@ -66121,6 +65859,25 @@ function waitForLayout(el) {
   });
 }
 
+/**
+ * Обводит контур прямоугольника со скруглёнными углами.
+ * @param {CanvasRenderingContext2D} ctx
+ * @param {number} x
+ * @param {number} y
+ * @param {number} w
+ * @param {number} h
+ * @param {number} r
+ */
+function traceRoundedRect(ctx, x, y, w, h, r) {
+  const radius = Math.max(0, Math.min(r, w / 2, h / 2));
+  ctx.moveTo(x + radius, y);
+  ctx.arcTo(x + w, y, x + w, y + h, radius);
+  ctx.arcTo(x + w, y + h, x, y + h, radius);
+  ctx.arcTo(x, y + h, x, y, radius);
+  ctx.arcTo(x, y, x + w, y, radius);
+  ctx.closePath();
+}
+
 async function savePostcardAsPng() {
   const postcard = document.querySelector(".postcard");
   if (!postcard) return;
@@ -66132,35 +65889,78 @@ async function savePostcardAsPng() {
   if (savePngBtn) savePngBtn.disabled = true;
 
   try {
+    const scale = 2;
+
+    // 1) фиксируем текущий кадр 3D-сцены в отдельный canvas
+    const view = viewRef.renderer.domElement;
     viewRef.controls.update();
     viewRef.renderer.render(viewRef.scene, viewRef.camera);
-    const bouquetSnapshot = viewRef.renderer.domElement.toDataURL("image/png");
+    const shot = document.createElement("canvas");
+    shot.width = view.width;
+    shot.height = view.height;
+    shot.getContext("2d").drawImage(view, 0, 0);
 
+    // 2) вёрстку открытки (фон, рамка, текст) рисует html2canvas
     const { default: html2canvas } = await import(
       'https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/+esm'
     );
 
+    /** @type {{ x: number, y: number, w: number, h: number, fx: number, fy: number, fw: number, fh: number, r: number } | null} */
+    let frame = null;
+
     const canvas = await html2canvas(postcard, {
-      scale: 2,
+      scale,
       useCORS: true,
       logging: false,
       onclone(clonedDoc) {
         const hint = clonedDoc.querySelector(".postcard__hint");
         const status = clonedDoc.getElementById("card-scene-status");
-        if (hint) hint.remove();
-        if (status) status.remove();
+        if (hint) hint.style.visibility = "hidden";
+        if (status) status.style.visibility = "hidden";
 
         const clonedViewport = clonedDoc.getElementById("card-scene");
-        if (clonedViewport && bouquetSnapshot) {
-          clonedViewport.innerHTML = "";
-          const img = clonedDoc.createElement("img");
-          img.src = bouquetSnapshot;
-          img.alt = BOUQUET_TITLE;
-          img.style.cssText = "display:block;width:100%;height:100%;object-fit:cover";
-          clonedViewport.appendChild(img);
-        }
+        if (!clonedViewport) return;
+        // 3D-канву html2canvas копировать не умеет, а картинку растягивает
+        // по своему боксу (object-fit не поддерживается) — сцену
+        // вклеиваем в готовый PNG сами, по координатам клона.
+        clonedViewport.innerHTML = "";
+
+        const card = clonedDoc.querySelector(".postcard");
+        if (!card) return;
+        const cardRect = card.getBoundingClientRect();
+        const vpRect = clonedViewport.getBoundingClientRect();
+        const figure = clonedViewport.closest(".postcard__bouquet");
+        const figRect = figure ? figure.getBoundingClientRect() : vpRect;
+        const radius = figure
+          ? parseFloat(getComputedStyle(figure).borderTopLeftRadius) || 0
+          : 0;
+        frame = {
+          x: (vpRect.left - cardRect.left) * scale,
+          y: (vpRect.top - cardRect.top) * scale,
+          w: vpRect.width * scale,
+          h: vpRect.height * scale,
+          fx: (figRect.left - cardRect.left) * scale,
+          fy: (figRect.top - cardRect.top) * scale,
+          fw: figRect.width * scale,
+          fh: figRect.height * scale,
+          r: radius * scale,
+        };
       },
     });
+
+    // 3) накладываем снимок букета на готовый кадр открытки
+    if (frame) {
+      const ctx = canvas.getContext("2d");
+      ctx.save();
+      // html2canvas возвращает canvas с уже применённым трансформом (scale и сдвиг),
+      // поэтому переключаем контекст на реальные пиксели холста
+      ctx.setTransform(1, 0, 0, 1, 0, 0);
+      ctx.beginPath();
+      traceRoundedRect(ctx, frame.fx, frame.fy, frame.fw, frame.fh, frame.r);
+      ctx.clip();
+      ctx.drawImage(shot, frame.x, frame.y, frame.w, frame.h);
+      ctx.restore();
+    }
 
     const link = document.createElement("a");
     const date = new Date().toISOString().slice(0, 10);
@@ -66190,19 +65990,6 @@ async function saveBouquet() {
     await writable.write(aa);
     await writable.close();
 }
-/**
- * @param {ArrayBuffer} buffer
- * @param {string} filename
- */
-function downloadArrayBuffer(buffer, filename) {
-  const blob = new Blob([buffer], { type: "model/gltf-binary" });
-  const url = URL.createObjectURL(blob);
-  const link = document.createElement("a");
-  link.href = url;
-  link.download = filename;
-  link.click();
-  URL.revokeObjectURL(url);
-}
 
 /**
  * @param {Blob} blob
@@ -66215,48 +66002,6 @@ function downloadBlob(blob, filename) {
   link.download = filename;
   link.click();
   URL.revokeObjectURL(url);
-}
-
-async function saveBouquetAsGlb() {
-  if (!viewRef?.bouquet) {
-    alert("Подождите, пока загрузится букет.");
-    return;
-  }
-  if (cardParagraphs.length === 0) {
-    alert("Текст открытки ещё не загружен.");
-    return;
-  }
-
-  if (saveGlbBtn) saveGlbBtn.disabled = true;
-
-  try {
-    const { root: exportRoot, texture } = await buildPostcardGlbRoot(
-      viewRef.bouquet,
-      cardParagraphs
-    );
-
-    const exporter = new GLTFExporter();
-    const result = await new Promise((resolve, reject) => {
-      exporter.parse(exportRoot, resolve, reject, { binary: true });
-    });
-
-    disposePostcardGlbRoot(exportRoot, texture);
-
-    if (!(result instanceof ArrayBuffer)) {
-      throw new Error("Экспорт не вернул бинарный GLB");
-    }
-
-    downloadArrayBuffer(result, "3d-otkrytka.glb");
-  } catch (err) {
-    console.error(err);
-    alert(
-      err instanceof Error
-        ? `Не удалось сохранить GLB: ${err.message}`
-        : "Не удалось сохранить GLB."
-    );
-  } finally {
-    if (saveGlbBtn) saveGlbBtn.disabled = false;
-  }
 }
 
 async function savePostcardAsHtml() {
