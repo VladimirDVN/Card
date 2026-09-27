@@ -261,12 +261,22 @@ body {
 }
 
 @media print {
+  /* Открытка печатается на одной альбомной странице.
+     Ширину страницы задаёт @page, а не окно браузера. */
+  @page {
+    size: A4 landscape;
+    margin: 8mm;
+  }
+
+  html,
   body {
     background: #fff;
   }
 
   .topbar,
-  .postcard__hint {
+  .postcard__hint,
+  .postcard__ornament,
+  .postcard__scene-status {
     display: none !important;
   }
 
@@ -280,5 +290,30 @@ body {
     box-shadow: none;
     border: 1px solid #ddd;
     break-inside: avoid;
+    page-break-inside: avoid;
+    padding: 10mm 8mm;
+  }
+
+  /* Печатная вёрстка уже, чем экранная, но букет здесь должен остаться
+     рядом с текстом, а не схлопнуться в мобильную колонку. */
+  .postcard__bouquet {
+    float: left;
+    width: 46%;
+    max-width: none;
+    height: 132mm;
+    margin: 0 8mm 4mm 0;
+    shape-outside: none;
+    break-inside: avoid;
+    page-break-inside: avoid;
+  }
+
+  .postcard__viewport {
+    min-height: 0;
+    background: #e8dde6;
+  }
+
+  .postcard__copy p {
+    orphans: 3;
+    widows: 3;
   }
 }
